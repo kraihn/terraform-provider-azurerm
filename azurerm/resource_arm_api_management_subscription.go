@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/apimanagement/mgmt/2018-01-01/apimanagement"
+	"github.com/Azure/azure-sdk-for-go/services/apimanagement/mgmt/2019-01-01/apimanagement"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/satori/uuid"
@@ -43,7 +43,12 @@ func resourceArmApiManagementSubscription() *schema.Resource {
 				ValidateFunc: validate.UUIDOrEmpty,
 			},
 
-			"user_id": azure.SchemaApiManagementChildID(),
+			"user_id": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				ValidateFunc: azure.ValidateResourceID,
+			},
 
 			"product_id": azure.SchemaApiManagementChildID(),
 
@@ -121,10 +126,12 @@ func resourceArmApiManagementSubscriptionCreateUpdate(d *schema.ResourceData, me
 	params := apimanagement.SubscriptionCreateParameters{
 		SubscriptionCreateParameterProperties: &apimanagement.SubscriptionCreateParameterProperties{
 			DisplayName: utils.String(displayName),
-			ProductID:   utils.String(productId),
+			Scope:       utils.String(productId),
 			State:       apimanagement.SubscriptionState(state),
-			UserID:      utils.String(userId),
 		},
+	}
+	if userId != "" {
+		params.SubscriptionCreateParameterProperties.OwnerID = utils.String(userId)
 	}
 
 	if v, ok := d.GetOk("primary_key"); ok {
